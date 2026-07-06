@@ -1,0 +1,26 @@
+{
+  "name": "tecnologias-para-la-gestion-publica",
+  "version": "1.0.0",
+  "description": "CivicFlow - Plataforma de gestión de trámites",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c green,cyan \"npm --prefix backend start\" \"npm --prefix frontend run dev\"",
+    "backend": "npm --prefix backend start",
+    "frontend": "npm --prefix frontend run dev",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yato515/Tecnologias-para-la-gestion-publica.git"
+  },
+  "author": "yato",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yato515/Tecnologias-para-la-gestion-publica/issues"
+  },
+  "homepage": "https://github.com/yato515/Tecnologias-para-la-gestion-publica#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --color-yuc-green-dark: #00382b;
+  --color-yuc-green: #005c42;
+  --color-yuc-green-light: #008260;
+  --color-yuc-gold: #c29b38;
+  --color-yuc-gold-light: #e5c158;
+  --color-yuc-gold-dark: #8e6d23;
+  
+  --font-display: "Montserrat", sans-serif;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+}
+
+/* Base custom resets */
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+/* Soft Animations */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}

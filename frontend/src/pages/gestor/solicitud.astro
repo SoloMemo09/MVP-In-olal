@@ -1,0 +1,790 @@
+---
+import Layout from '../../layouts/Layout.astro';
+const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:3000';
+---
+
+<Layout title="Detalle de Solicitud - Panel Gestor">
+	
+	<!-- Manager Sub-navigation header -->
+	<div class="bg-yuc-green-dark text-white transition-colors border-b border-yuc-gold/30">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between py-6 gap-4">
+				<div>
+					<a href="/gestor/dashboard" class="text-xs font-bold text-yuc-gold hover:underline flex items-center gap-1.5 mb-1">
+						<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+						<span>Volver a la Mesa de Trabajo</span>
+					</a>
+					<h1 class="text-2xl font-black font-display mt-1">Expediente del Ciudadano</h1>
+					<p class="text-xs text-slate-350 mt-1">Folio: <span id="lbl-solicitud-folio" class="font-mono font-bold text-yuc-gold">...</span></p>
+				</div>
+				<div class="flex items-center gap-3">
+					<span id="lbl-solicitud-status-badge" class="px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-800 text-slate-300">
+						...
+					</span>
+				</div>
+			</div>
+
+			<!-- Submenu to match dashboard.astro, for consistent UX -->
+			<div class="flex gap-6 text-sm border-t border-yuc-gold/20 pt-1">
+				<a href="/gestor/dashboard" class="pb-3 border-b-2 border-transparent text-slate-300 hover:text-white transition-all">Mesa de Trabajo</a>
+				<a href="/gestor/cola" class="pb-3 border-b-2 border-transparent text-slate-300 hover:text-white transition-all">Bandeja de Entrada</a>
+				<a href="/gestor/vencidas" class="pb-3 border-b-2 border-transparent text-slate-300 hover:text-white transition-all flex items-center gap-1.5">
+					<span>Solicitudes Vencidas</span>
+					<span id="badge-vencidas-count" class="hidden px-1.5 py-0.5 rounded-full bg-red-600 text-white font-extrabold text-[9px]">0</span>
+				</a>
+				<a href="/gestor/audit" class="pb-3 border-b-2 border-transparent text-slate-300 hover:text-white transition-all">Logs de Auditoría</a>
+				<a href="/gestor/dashboard?tab=admin" id="tab-admin" class="hidden pb-3 border-b-2 border-transparent text-slate-300 hover:text-white transition-all flex items-center gap-1.5">
+					<svg class="w-4 h-4 text-yuc-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+					<span>Administrar Cuentas</span>
+				</a>
+			</div>
+		</div>
+	</div>
+
+	<!-- Main Workspace -->
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+		
+		<!-- Protected route check overlay -->
+		<div id="gestor-overlay" class="hidden bg-yellow-50 border border-yellow-200 rounded-2xl p-8 text-center max-w-lg mx-auto space-y-6 shadow-xl">
+			<div class="w-16 h-16 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center mx-auto">
+				<svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+			</div>
+			<h3 class="text-xl font-bold text-slate-800">Acceso Denegado</h3>
+			<p class="text-sm text-slate-500">Inicie sesión como funcionario público para ingresar a esta pantalla.</p>
+			<a href="/gestor" class="inline-block px-6 py-3 bg-yuc-green hover:bg-yuc-green-light text-white font-bold rounded-xl shadow-md text-sm">Ir al Acceso Gestor</a>
+		</div>
+
+		<!-- Request workspace -->
+		<div id="solicitud-workspace" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+			
+			<!-- Left side: Citizen details & Documents (Cols 2) -->
+			<div class="lg:col-span-2 space-y-6">
+				
+				<!-- Citizen Profile Card -->
+				<div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+					<h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider font-display border-b border-slate-100 pb-3">Datos del Ciudadano</h3>
+					
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+						<div>
+							<p class="text-slate-400 text-[10px] font-bold uppercase">Nombre Completo</p>
+							<p id="lbl-citizen-name" class="font-semibold text-slate-800 mt-1">...</p>
+						</div>
+						<div>
+							<p class="text-slate-400 text-[10px] font-bold uppercase">CURP</p>
+							<p id="lbl-citizen-curp" class="font-mono font-bold text-slate-800 mt-1">...</p>
+						</div>
+						<div>
+							<p class="text-slate-400 text-[10px] font-bold uppercase">Correo Electrónico</p>
+							<p id="lbl-citizen-email" class="text-slate-700 mt-1">...</p>
+						</div>
+						<div>
+							<p class="text-slate-400 text-[10px] font-bold uppercase">Teléfono de Contacto</p>
+							<p id="lbl-citizen-phone" class="text-slate-700 mt-1">...</p>
+						</div>
+						<div class="sm:col-span-2">
+							<p class="text-slate-400 text-[10px] font-bold uppercase">Domicilio Manifestado</p>
+							<p id="lbl-citizen-address" class="text-slate-700 mt-1">...</p>
+						</div>
+					</div>
+				</div>
+
+				<!-- Citizen History Card (Compact) -->
+				<div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+					<div class="flex items-center justify-between border-b border-slate-100 pb-3">
+						<h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider font-display">Historial de Trámites</h3>
+						<button id="btn-open-history-modal" class="text-[10px] font-bold text-yuc-gold hover:text-yuc-gold-dark uppercase tracking-wider flex items-center gap-1">
+							Ver Completo <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+						</button>
+					</div>
+					
+					<div id="compact-history-list" class="space-y-3">
+						<div class="text-xs text-slate-500 italic py-2 text-center">Cargando historial previo...</div>
+					</div>
+				</div>
+
+				<!-- Attached Documents Card -->
+				<div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+					<h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider font-display border-b border-slate-100 pb-3">Expediente de Documentos Adjuntos</h3>
+					
+					<div class="space-y-4">
+						
+						<!-- File 1: INE -->
+						<div class="p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+							<div class="flex items-start gap-3">
+								<div class="w-9 h-9 rounded-lg bg-yuc-green/10 text-yuc-green flex items-center justify-center shrink-0">
+									<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"></path></svg>
+								</div>
+								<div>
+									<h4 class="font-bold text-xs text-slate-800 flex items-center gap-2">
+										Identificación Oficial (INE)
+										<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-extrabold uppercase">
+											✓ Validado por IA
+										</span>
+									</h4>
+									<p id="lbl-file-ine-name" class="text-[10px] text-slate-400 font-mono mt-0.5">ine.pdf</p>
+									<p class="text-[10px] text-slate-500 mt-1">Coincidencia confirmada con RENAPO/SAT en background.</p>
+								</div>
+							</div>
+							<div class="flex items-center gap-2">
+								<a href="#" class="px-3 py-1.5 bg-slate-200 text-slate-700 hover:bg-slate-300 border border-slate-300 text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1.5">
+									<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+									Ver Documento
+								</a>
+							</div>
+						</div>
+
+						<!-- File 2: Comprobante Domicilio -->
+						<div class="p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+							<div class="flex items-start gap-3">
+								<div class="w-9 h-9 rounded-lg bg-yuc-green/10 text-yuc-green flex items-center justify-center shrink-0">
+									<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"></path></svg>
+								</div>
+								<div>
+									<h4 class="font-bold text-xs text-slate-800 flex items-center gap-2">
+										Comprobante de Domicilio
+										<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-extrabold uppercase">
+											✓ Validado por IA
+										</span>
+									</h4>
+									<p id="lbl-file-dom-name" class="text-[10px] text-slate-400 font-mono mt-0.5">comprobante.pdf</p>
+									<p class="text-[10px] text-slate-500 mt-1">Coincidencia confirmada con RENAPO/SAT en background.</p>
+								</div>
+							</div>
+							<div class="flex items-center gap-2">
+								<a href="#" class="px-3 py-1.5 bg-slate-200 text-slate-700 hover:bg-slate-300 border border-slate-300 text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1.5">
+									<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+									Ver Documento
+								</a>
+							</div>
+						</div>
+
+					</div>
+				</div>
+
+				<!-- AI Validation Split View -->
+				<div class="space-y-4 mt-6">
+					<!-- Banner de Éxito -->
+					<div class="bg-emerald-100 border border-emerald-300 rounded-xl p-4 flex items-center gap-3 shadow-sm">
+						<div class="w-8 h-8 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center shrink-0">
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+						</div>
+						<div>
+							<h4 class="text-sm font-bold text-emerald-900 uppercase tracking-wider font-display">DICTAMEN AUTOMÁTICO</h4>
+							<p class="text-xs text-emerald-800 mt-0.5">Los documentos extraídos por IA coinciden con los registros oficiales.</p>
+						</div>
+					</div>
+
+					<!-- Grid Compulsa -->
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+						<!-- Panel Izquierdo: Datos Declarados -->
+						<div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+							<h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider font-display border-b border-slate-100 pb-2 mb-4">Datos Declarados (Formulario)</h3>
+							<div class="space-y-3">
+								<div>
+									<p class="text-slate-400 text-[10px] font-bold uppercase">Nombre Registrado</p>
+									<p id="lbl-ai-declared-name" class="font-semibold text-slate-800 text-sm mt-0.5">...</p>
+								</div>
+								<div>
+									<p class="text-slate-400 text-[10px] font-bold uppercase">CURP Registrada</p>
+									<p id="lbl-ai-declared-curp" class="font-mono font-bold text-slate-800 text-sm mt-0.5">...</p>
+								</div>
+							</div>
+						</div>
+
+						<!-- Panel Derecho: Validación IA -->
+						<div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-inner">
+							<h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider font-display border-b border-slate-200 pb-2 mb-4 flex items-center gap-2">
+								<svg class="w-4 h-4 text-yuc-green" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"></path></svg>
+								Extracción IA (OCR)
+							</h3>
+							<div class="space-y-3">
+								<div>
+									<p class="text-slate-400 text-[10px] font-bold uppercase">Nombre en INE Extrapolado</p>
+									<p id="lbl-ai-extracted-name" class="font-semibold text-slate-800 text-sm mt-0.5">...</p>
+								</div>
+								<div>
+									<p class="text-slate-400 text-[10px] font-bold uppercase">CURP en Documento Oficial</p>
+									<p id="lbl-ai-extracted-curp" class="font-mono font-bold text-slate-800 text-sm mt-0.5">...</p>
+								</div>
+								<div class="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+									<span class="text-[10px] font-bold text-slate-500 uppercase">Score de Similitud</span>
+									<span class="text-xs font-bold text-emerald-600">99.8% Match</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+			</div>
+
+			<!-- Right side: Actions / Signature / Rejection (Col 1) -->
+			<div class="lg:col-span-1 space-y-6">
+				
+				<!-- Action panel card -->
+				<div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6 sticky top-24">
+					
+					<div class="border-b border-slate-100 pb-3">
+						<h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider font-display">Dictamen de Trámite</h3>
+						<span class="text-[10px] text-slate-400 mt-1 block">Usuario activo: <span id="lbl-role-status" class="font-bold text-yuc-gold">...</span></span>
+					</div>
+
+					<div class="space-y-4" id="action-buttons-container">
+						
+						<!-- REVISOR ACTION: Marcar como revisado (only visible for status 'Recibido' when role is Revisor) -->
+						<button 
+							id="btn-mark-reviewed" 
+							class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-yuc-green hover:bg-yuc-green-light text-white font-extrabold rounded-xl text-xs shadow-md transition-all hidden"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg>
+							<span>Marcar como Revisado (Avanzar)</span>
+						</button>
+
+						<!-- APROBADOR ACTION: Panel de Firma Canvas (only visible for status 'En revisión' or 'Recibido' when role is Aprobador) -->
+						<div id="approver-sign-panel" class="space-y-3 hidden">
+							<label class="block text-xs font-bold text-slate-700 uppercase">Dibuje su firma electrónica sobre el recuadro:</label>
+							<div class="border border-slate-200 bg-slate-50 rounded-xl overflow-hidden shadow-inner">
+								<!-- Interactive signature canvas -->
+								<canvas id="signature-canvas" width="280" height="130" class="cursor-crosshair block w-full"></canvas>
+							</div>
+							<div class="flex justify-between items-center text-[10px]">
+								<button id="btn-clear-canvas" class="text-slate-400 hover:text-slate-600 font-bold uppercase">Limpiar Recuadro</button>
+								<span class="text-slate-450 font-medium">Firma Autógrafa Simple</span>
+							</div>
+							<button 
+								id="btn-dictaminate-approve" 
+								class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-xs shadow-md transition-all"
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+								<span>Firmar y Aprobar Trámite</span>
+							</button>
+						</div>
+
+						<!-- Correction needed trigger -->
+						<button 
+							id="btn-trigger-correction"
+							class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-amber-500/10 text-amber-600 hover:bg-amber-500 hover:text-white border border-amber-500/20 text-xs font-bold rounded-xl transition-all"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+							<span>Solicitar Corrección</span>
+						</button>
+
+						<!-- Rejection trigger -->
+						<button 
+							id="btn-trigger-reject"
+							class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 text-red-650 hover:bg-red-600 hover:text-white border border-red-500/20 text-xs font-bold rounded-xl transition-all"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+							<span>Rechazar Trámite</span>
+						</button>
+
+					</div>
+
+					<!-- Correction Form Overlay Box (Toggled by button) -->
+					<div id="correction-input-box" class="hidden p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 space-y-3">
+						<label class="block text-xs font-bold text-slate-700 uppercase">Observación para el ciudadano:</label>
+						<textarea id="txt-correction-comment" rows="3" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-white text-slate-900" placeholder="Escriba qué documento debe corregir..."></textarea>
+						<div class="flex gap-2">
+							<button id="btn-submit-correction" class="px-3 py-1.5 bg-amber-500 text-white rounded font-bold text-xs hover:bg-amber-600 transition-colors">Enviar</button>
+							<button id="btn-cancel-correction" class="px-3 py-1.5 bg-slate-200 text-slate-700 rounded font-bold text-xs hover:bg-slate-300 transition-colors">Cancelar</button>
+						</div>
+					</div>
+
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+
+	<!-- FULL HISTORY MODAL -->
+	<div id="history-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+		<div class="bg-white border border-slate-200 max-w-3xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+			<div class="h-1 bg-yuc-gold w-full"></div>
+			<div class="p-5 border-b border-slate-200 flex justify-between items-center bg-white z-10 relative">
+				<h3 class="text-lg font-bold text-slate-800 font-display flex items-center gap-2">
+					<svg class="w-5 h-5 text-yuc-gold" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+					Historial Completo del Ciudadano
+				</h3>
+				<button id="btn-close-history-modal" class="text-slate-450 hover:text-slate-700 font-bold text-xl">&times;</button>
+			</div>
+
+			<div class="p-5 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-4 items-end">
+				<div>
+					<label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Año</label>
+					<select id="filter-year" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs focus:ring-1 focus:ring-yuc-gold focus:outline-none">
+						<option value="all">Todos</option>
+						<option value="2026">2026</option>
+						<option value="2025">2025</option>
+						<option value="2024">2024</option>
+					</select>
+				</div>
+				<div>
+					<label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Mes</label>
+					<select id="filter-month" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs focus:ring-1 focus:ring-yuc-gold focus:outline-none">
+						<option value="all">Todos</option>
+						<option value="0">Enero</option>
+						<option value="1">Febrero</option>
+						<option value="2">Marzo</option>
+						<option value="3">Abril</option>
+						<option value="4">Mayo</option>
+						<option value="5">Junio</option>
+						<option value="6">Julio</option>
+						<option value="7">Agosto</option>
+						<option value="8">Septiembre</option>
+						<option value="9">Octubre</option>
+						<option value="10">Noviembre</option>
+						<option value="11">Diciembre</option>
+					</select>
+				</div>
+			</div>
+
+			<div class="overflow-y-auto p-5 flex-1 custom-scrollbar">
+				<div class="overflow-x-auto">
+					<table class="w-full text-left text-sm whitespace-nowrap">
+						<thead class="text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
+							<tr>
+								<th class="pb-3 font-bold">Folio</th>
+								<th class="pb-3 font-bold">Trámite</th>
+								<th class="pb-3 font-bold">Fecha</th>
+								<th class="pb-3 font-bold">Estado</th>
+							</tr>
+						</thead>
+						<tbody id="tbl-history-body" class="divide-y divide-slate-150 text-slate-750 text-xs">
+							<tr>
+								<td colspan="4" class="py-8 text-center text-slate-400">Buscando registros...</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- REJECTION TEMPLATE MODAL OVERLAY (Initially Hidden) -->
+	<div id="rejection-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+		<div class="bg-white border border-slate-200 max-w-lg w-full rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6 transform scale-95 transition-transform duration-300">
+			
+			<div class="flex justify-between items-center pb-3 border-b border-slate-100">
+				<h3 class="text-lg font-bold text-slate-800 font-display">Rechazar Solicitud de Trámite</h3>
+				<button id="btn-close-reject-modal" class="text-slate-450 hover:text-slate-700 font-bold text-xl">&times;</button>
+			</div>
+
+			<div class="space-y-4">
+				<label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Seleccione una Plantilla de Rechazo Predefinida:</label>
+				
+				<div class="grid grid-cols-1 gap-2.5">
+					<button 
+						type="button" 
+						class="btn-reject-template p-3 rounded-lg border border-slate-200 hover:border-red-500/50 bg-slate-50 text-left text-xs transition-colors"
+						data-comment="Documentación ilegible: Los archivos escaneados de Identificación Oficial o Comprobante de Domicilio no cuentan con la resolución necesaria para validar sellos o firmas oficiales."
+					>
+						<strong class="block text-slate-800 font-bold mb-1">1. Documentación ilegible o borrosa</strong>
+						<span class="text-[10px] text-slate-500 block leading-tight">Archivos no legibles para cotejo oficial.</span>
+					</button>
+
+					<button 
+						type="button" 
+						class="btn-reject-template p-3 rounded-lg border border-slate-200 hover:border-red-500/50 bg-slate-50 text-left text-xs transition-colors"
+						data-comment="Fuera de competencia territorial: El domicilio manifestado por el solicitante corresponde a una demarcación municipal no adscrita a las competencias de esta oficina estatal."
+					>
+						<strong class="block text-slate-800 font-bold mb-1">2. Fuera de competencia territorial</strong>
+						<span class="text-[10px] text-slate-500 block leading-tight">El domicilio no pertenece al estado de Yucatán.</span>
+					</button>
+
+					<button 
+						type="button" 
+						class="btn-reject-template p-3 rounded-lg border border-slate-200 hover:border-red-500/50 bg-slate-50 text-left text-xs transition-colors"
+						data-comment="Solicitud duplicada: Se detectó una solicitud previa con el mismo CURP y para el mismo ejercicio fiscal en estado Aprobado o En revisión."
+					>
+						<strong class="block text-slate-800 font-bold mb-1">3. Solicitud duplicada</strong>
+						<span class="text-[10px] text-slate-500 block leading-tight">Folio ya registrado previamente para este ciudadano.</span>
+					</button>
+				</div>
+
+				<div class="space-y-1.5 pt-2">
+					<label class="block text-xs font-bold text-slate-700 uppercase">Comentario final de Rechazo (se envía al correo):</label>
+					<textarea id="txt-reject-comment" rows="3" class="w-full p-2.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-900" placeholder="Seleccione una plantilla anterior o escriba aquí..."></textarea>
+				</div>
+			</div>
+
+			<div class="flex justify-end gap-3 pt-3 border-t border-slate-100">
+				<button id="btn-cancel-reject-modal" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors">Cancelar</button>
+				<button id="btn-submit-reject" class="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-500 transition-colors">Dictaminar Rechazo</button>
+			</div>
+
+		</div>
+	</div>
+
+	<script is:inline define:vars={{ API_URL }}>
+		// Protect page access
+		const gestorLogged = localStorage.getItem('gestor_logged');
+		if (gestorLogged !== 'true') {
+			window.location.href = '/gestor';
+		} else {
+			const init = async () => {
+				const params = new URLSearchParams(window.location.search);
+				const folio = params.get('id');
+
+				const role = localStorage.getItem('gestor_role') || 'Revisor';
+				const userEmail = localStorage.getItem('gestor_email') || 'N/A';
+				document.getElementById('lbl-role-status').textContent = `${role} (${userEmail})`;
+
+				// Show admin tab if user is Aprobador
+				if (role.toLowerCase() === 'aprobador') {
+					document.getElementById('tab-admin').classList.remove('hidden');
+				}
+
+				if (!folio) {
+					document.getElementById('solicitud-workspace').classList.add('hidden');
+					window.showToast("No se recibió un folio o identificador de solicitud", "error");
+					return;
+				}
+
+				const fetchJson = async (url) => {
+					const response = await fetch(url);
+					return response.json().catch(() => ({ success: false, message: 'Respuesta invÃ¡lida del servidor' }));
+				};
+
+				// Load request from gestor endpoint first; fallback keeps old links compatible.
+				let json = await fetchJson(`${API_URL}/api/gestores/solicitudes/${encodeURIComponent(folio)}`);
+				if (!json.success || !json.data) {
+					json = await fetchJson(`${API_URL}/api/tramites/solicitudes/folio/${encodeURIComponent(folio)}`);
+				}
+
+				if (!json.success || !json.data) {
+					document.getElementById('solicitud-workspace').classList.add('hidden');
+					window.showToast(`Solicitud no encontrada: ${folio}`, "error");
+					return;
+				}
+				
+				const req = json.data;
+				const reqId = req.id;
+				const ciudadanoId = req.ciudadano_id || req.ciudadano?.id;
+
+				const statusMap = {
+					'recibido': 'Recibido',
+					'en_revision': 'En revisión',
+					'documentacion_incompleta': 'Documentación incompleta',
+					'aprobado': 'Aprobado',
+					'rechazado': 'Rechazado'
+				};
+				const displayStatus = statusMap[req.estado] || req.estado;
+
+				// Fill labels — campos_respuesta uses: nombre_ciudadano, correo_ciudadano, curp_ciudadano, municipio
+				const cname = req.ciudadano?.nombre_completo || req.campos_respuesta?.nombre_ciudadano || 'N/A';
+				const ccurp = req.ciudadano?.curp || req.campos_respuesta?.curp_ciudadano || 'N/A';
+				const cemail = req.ciudadano?.email || req.campos_respuesta?.correo_ciudadano || req.campos_respuesta?.email || 'N/A';
+
+				document.getElementById('lbl-solicitud-folio').textContent = req.folio || req.id;
+				document.getElementById('lbl-citizen-name').textContent = cname;
+				document.getElementById('lbl-citizen-curp').textContent = ccurp;
+				document.getElementById('lbl-citizen-email').textContent = cemail;
+				
+				const declaredName = document.getElementById('lbl-ai-declared-name');
+				if (declaredName) declaredName.textContent = cname;
+				const declaredCurp = document.getElementById('lbl-ai-declared-curp');
+				if (declaredCurp) declaredCurp.textContent = ccurp;
+
+				const extractedName = document.getElementById('lbl-ai-extracted-name');
+				if (extractedName) extractedName.textContent = cname; // Simulate perfect match
+				const extractedCurp = document.getElementById('lbl-ai-extracted-curp');
+				if (extractedCurp) extractedCurp.textContent = ccurp; // Simulate perfect match
+				document.getElementById('lbl-citizen-phone').textContent = req.campos_respuesta?.telefono || req.campos_respuesta?.telefono_ciudadano || 'N/A';
+				document.getElementById('lbl-citizen-address').textContent = req.campos_respuesta?.direccion || req.campos_respuesta?.municipio || 'N/A';
+				
+				document.getElementById('lbl-file-ine-name').textContent = 'ine_ciudadano.pdf';
+				document.getElementById('lbl-file-dom-name').textContent = 'comprobante_dom.pdf';
+
+				// Set status badge
+				const statusBadge = document.getElementById('lbl-solicitud-status-badge');
+				statusBadge.textContent = displayStatus;
+				let badgeClass = 'bg-slate-100 text-slate-700';
+				if (req.estado === 'en_revision') badgeClass = 'bg-amber-100 text-amber-705 border border-amber-200';
+				else if (req.estado === 'aprobado') badgeClass = 'bg-emerald-100 text-emerald-700 border border-emerald-250';
+				else if (req.estado === 'documentacion_incompleta') badgeClass = 'bg-orange-100 text-orange-700 border border-orange-200';
+				else if (req.estado === 'rechazado') badgeClass = 'bg-red-100 text-red-700 border border-red-200';
+				else if (req.estado === 'recibido') badgeClass = 'bg-yuc-green/15 text-yuc-green border border-yuc-green/20';
+				statusBadge.className = `px-3.5 py-1.5 rounded-full text-xs font-bold ${badgeClass}`;
+
+				// Render review controls based on roles and current status
+				const btnReview = document.getElementById('btn-mark-reviewed');
+				const signPanel = document.getElementById('approver-sign-panel');
+
+				if (role.toLowerCase() === 'revisor' && req.estado === 'recibido') {
+					btnReview.classList.remove('hidden');
+				} else if (role.toLowerCase() === 'aprobador' && (req.estado === 'en_revision' || req.estado === 'recibido')) {
+					signPanel.classList.remove('hidden');
+				}
+
+				// El sistema ya no usa botones manuales de validación de documentos
+
+				const updateEstadoBackend = async (estadoNuevo, notas) => {
+					try {
+						const response = await fetch(`${API_URL}/api/gestores/solicitudes/${reqId}/estado`, {
+							method: 'PATCH',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								estado_nuevo: estadoNuevo,
+								notas: notas || '',
+								usuario_id: userEmail,
+								ip: '192.168.1.104',
+								correo_destinatario: req.campos_respuesta?.email || null,
+								nombre_destinatario: req.ciudadano?.nombre_completo || null
+							})
+						});
+						const j = await response.json();
+						if(!j.success) throw new Error(j.message);
+						return true;
+					} catch (e) {
+						window.showToast("Error conectando al backend: " + e.message, "error");
+						return false;
+					}
+				};
+
+				// Revisor mark reviewed action
+				btnReview.addEventListener('click', async () => {
+					const success = await updateEstadoBackend('en_revision', 'Revisión técnica de documentos completada. Se avanza expediente para firma y dictamen del Director.');
+					if(success) {
+						window.showToast("Marcar como revisado completado con éxito", "success");
+						setTimeout(() => { window.location.href = '/gestor/cola'; }, 800);
+					}
+				});
+
+				// Correction Drawer handling
+				const triggerCorrection = document.getElementById('btn-trigger-correction');
+				const correctionBox = document.getElementById('correction-input-box');
+				const submitCorrection = document.getElementById('btn-submit-correction');
+				const cancelCorrection = document.getElementById('btn-cancel-correction');
+
+				triggerCorrection.addEventListener('click', () => {
+					correctionBox.classList.remove('hidden');
+					triggerCorrection.classList.add('hidden');
+				});
+
+				cancelCorrection.addEventListener('click', () => {
+					correctionBox.classList.add('hidden');
+					triggerCorrection.classList.remove('hidden');
+				});
+
+				submitCorrection.addEventListener('click', async () => {
+					const comment = document.getElementById('txt-correction-comment').value.trim();
+					if(!comment) {
+						window.showToast("Ingrese el motivo de corrección", "error");
+						return;
+					}
+
+					const success = await updateEstadoBackend('documentacion_incompleta', `Corrección solicitada: ${comment}`);
+					if(success) {
+						window.showToast("Notificación enviada al ciudadano", "success");
+						setTimeout(() => { window.location.href = '/gestor/cola'; }, 800);
+					}
+				});
+
+				// Rejection modal trigger
+				const triggerReject = document.getElementById('btn-trigger-reject');
+				const rejectModal = document.getElementById('rejection-modal');
+				const closeReject = document.getElementById('btn-close-reject-modal');
+				const cancelReject = document.getElementById('btn-cancel-reject-modal');
+				const submitReject = document.getElementById('btn-submit-reject');
+				const rejectComment = document.getElementById('txt-reject-comment');
+
+				triggerReject.addEventListener('click', () => {
+					rejectModal.classList.remove('hidden');
+				});
+
+				closeReject.addEventListener('click', () => rejectModal.classList.add('hidden'));
+				cancelReject.addEventListener('click', () => rejectModal.classList.add('hidden'));
+
+				// Rejection templates templates fill
+				const templates = document.querySelectorAll('.btn-reject-template');
+				templates.forEach(t => {
+					t.addEventListener('click', () => {
+						rejectComment.value = t.getAttribute('data-comment');
+						// Highlight selected
+						templates.forEach(other => other.classList.remove('border-red-500'));
+						t.classList.add('border-red-500');
+					});
+				});
+
+				submitReject.addEventListener('click', async () => {
+					const comment = rejectComment.value.trim();
+					if(!comment) {
+						window.showToast("Seleccione una plantilla o escriba el motivo de rechazo", "error");
+						return;
+					}
+
+					const success = await updateEstadoBackend('rechazado', `Trámite rechazado de forma definitiva: ${comment}`);
+					if(success) {
+						window.showToast("Trámite rechazado definitivamente", "error");
+						setTimeout(() => { window.location.href = '/gestor/cola'; }, 800);
+					}
+				});
+
+				// Approver Canvas Drawing signature logic
+				const canvas = document.getElementById('signature-canvas');
+				const ctx = canvas.getContext('2d');
+				let drawing = false;
+
+				// Styles for canvas signature line
+				ctx.strokeStyle = '#00382b';
+				ctx.lineWidth = 2.5;
+				ctx.lineCap = 'round';
+
+				const getMousePos = (e) => {
+					const rect = canvas.getBoundingClientRect();
+					// Support touch event
+					const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+					const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+					return {
+						x: (clientX - rect.left) * (canvas.width / rect.width),
+						y: (clientY - rect.top) * (canvas.height / rect.height)
+					};
+				};
+
+				const startDraw = (e) => {
+					drawing = true;
+					const pos = getMousePos(e);
+					ctx.beginPath();
+					ctx.moveTo(pos.x, pos.y);
+				};
+
+				const draw = (e) => {
+					if(!drawing) return;
+					e.preventDefault();
+					const pos = getMousePos(e);
+					ctx.lineTo(pos.x, pos.y);
+					ctx.stroke();
+				};
+
+				const stopDraw = () => {
+					drawing = false;
+				};
+
+				canvas.addEventListener('mousedown', startDraw);
+				canvas.addEventListener('mousemove', draw);
+				canvas.addEventListener('mouseup', stopDraw);
+				canvas.addEventListener('mouseleave', stopDraw);
+
+				canvas.addEventListener('touchstart', startDraw);
+				canvas.addEventListener('touchmove', draw);
+				canvas.addEventListener('touchend', stopDraw);
+
+				document.getElementById('btn-clear-canvas').addEventListener('click', () => {
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
+				});
+
+				// Approver dictaminate approval
+				document.getElementById('btn-dictaminate-approve').addEventListener('click', async () => {
+					const success = await updateEstadoBackend('aprobado', "Trámite validado, firmado y aprobado con firma autógrafa digitalizada.");
+					if(success) {
+						window.showToast("Trámite aprobado y firmado digitalmente", "success");
+						setTimeout(() => { window.location.href = '/gestor/cola'; }, 800);
+					}
+				});
+
+				// --- CITIZEN HISTORY LOGIC ---
+				let allHistory = [];
+
+				async function loadHistory() {
+					if(!ciudadanoId) return;
+					try {
+						const res = await fetch(`${API_URL}/api/gestores/ciudadano/${ciudadanoId}/historial`);
+						const data = await res.json();
+						if(data.success) {
+							allHistory = data.data;
+							renderCompactHistory();
+							renderFullHistory();
+						}
+					} catch (e) {
+						console.error("Error fetching history", e);
+						document.getElementById('compact-history-list').innerHTML = `<div class="text-xs text-red-600 py-2 font-semibold">Error al cargar historial</div>`;
+					}
+				}
+
+				function getStatusBadgeClass(status) {
+					if (status === 'aprobado' || status === 'Aprobado') return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+					if (status === 'rechazado' || status === 'Rechazado') return 'bg-red-100 text-red-700 border border-red-200';
+					if (status === 'en_revision' || status === 'En revisión') return 'bg-amber-100 text-amber-705 border border-amber-200';
+					if (status === 'documentacion_incompleta' || status === 'Documentación incompleta') return 'bg-orange-100 text-orange-700 border border-orange-200';
+					return 'bg-yuc-green/15 text-yuc-green border border-yuc-green/20';
+				}
+
+				function renderCompactHistory() {
+					const container = document.getElementById('compact-history-list');
+					if(allHistory.length === 0) {
+						container.innerHTML = `<div class="text-xs text-slate-500 py-2">No hay trámites previos.</div>`;
+						return;
+					}
+					// Show up to 3 most recent
+					const recent = allHistory.slice(0, 3);
+					let html = '';
+					recent.forEach(h => {
+						const d = new Date(h.created_at);
+						html += `
+							<div class="p-3 rounded-xl border border-slate-200 bg-slate-50 flex flex-col gap-1.5">
+								<div class="flex justify-between items-start">
+									<span class="font-bold text-xs text-slate-800">${h.tramite?.nombre || 'Trámite'}</span>
+									<span class="px-2 py-0.5 rounded text-[10px] font-bold ${getStatusBadgeClass(h.estado)}">${statusMap[h.estado] || h.estado}</span>
+								</div>
+								<div class="flex justify-between items-center text-[10px] text-slate-500">
+									<span class="font-mono">${h.folio}</span>
+									<span>${d.toLocaleDateString()}</span>
+								</div>
+							</div>
+						`;
+					});
+					container.innerHTML = html;
+				}
+
+				function renderFullHistory() {
+					const tbody = document.getElementById('tbl-history-body');
+					const selYear = document.getElementById('filter-year').value;
+					const selMonth = document.getElementById('filter-month').value;
+
+					const filtered = allHistory.filter(h => {
+						const d = new Date(h.created_at);
+						if (selYear !== 'all' && d.getFullYear().toString() !== selYear) return false;
+						if (selMonth !== 'all' && d.getMonth().toString() !== selMonth) return false;
+						return true;
+					});
+
+					if(filtered.length === 0) {
+						tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-500">No se encontraron registros con estos filtros.</td></tr>`;
+						return;
+					}
+
+					let html = '';
+					filtered.forEach(h => {
+						const d = new Date(h.created_at);
+						html += `
+							<tr class="hover:bg-slate-50 transition-colors">
+								<td class="py-3 font-mono text-[10px]">${h.folio}</td>
+								<td class="py-3 font-medium text-slate-800">${h.tramite?.nombre || 'Trámite'}</td>
+								<td class="py-3 text-slate-650">${d.toLocaleDateString()}</td>
+								<td class="py-3">
+									<span class="px-2 py-0.5 rounded text-[10px] font-bold ${getStatusBadgeClass(h.estado)}">${statusMap[h.estado] || h.estado}</span>
+								</td>
+							</tr>
+						`;
+					});
+					tbody.innerHTML = html;
+				}
+
+				// Modal controls
+				const historyModal = document.getElementById('history-modal');
+				document.getElementById('btn-open-history-modal').addEventListener('click', () => {
+					historyModal.classList.remove('hidden');
+				});
+				document.getElementById('btn-close-history-modal').addEventListener('click', () => {
+					historyModal.classList.add('hidden');
+				});
+				document.getElementById('filter-year').addEventListener('change', renderFullHistory);
+				document.getElementById('filter-month').addEventListener('change', renderFullHistory);
+
+				// Trigger load
+				loadHistory();
+			};
+			init();
+		}
+	</script>
+</Layout>

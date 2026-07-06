@@ -1,0 +1,523 @@
+---
+import Layout from '../../layouts/Layout.astro';
+const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:3000';
+---
+
+<Layout title="Buscador y Tracker de Trámites - In óolal Yucatan">
+	
+	<!-- Top Banner -->
+	<section class="bg-yuc-green-dark text-white py-8 transition-colors border-b border-yuc-gold/30">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+			<div>
+				<a href="/ciudadano" class="text-xs font-bold text-yuc-gold hover:underline flex items-center gap-1.5">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+					</svg>
+					<span>Volver al Portal Ciudadano</span>
+				</a>
+				<h1 class="text-2xl sm:text-3xl font-black font-display mt-2">Rastreador de Trámites</h1>
+				<p class="text-slate-200 text-xs mt-1">Consulte el avance y estado de sus solicitudes oficiales en tiempo real.</p>
+			</div>
+			<!-- Badge Realtime -->
+			<div class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold select-none shrink-0 self-start md:self-auto">
+				<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+				<span class="text-white text-[11px] tracking-wide font-mono">REALTIME SYNC ACTIVE</span>
+			</div>
+		</div>
+	</section>
+
+	<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+		
+		<!-- Search Panel -->
+		<div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+			<div class="max-w-xl">
+				<h2 class="text-lg font-bold text-slate-800 font-display">Buscador de Solicitud</h2>
+				<p class="text-xs text-slate-500 mt-1">
+					Ingrese el Folio del trámite (ej: <code class="font-mono text-yuc-green font-bold">TRM-2026-00201</code>) o su Token de Seguimiento (ej: <code class="font-mono text-yuc-green font-bold">TK-123456</code>).
+				</p>
+			</div>
+
+			<form id="tracker-search-form" class="flex flex-col sm:flex-row gap-3 max-w-2xl">
+				<div class="relative flex-grow">
+					<div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+						</svg>
+					</div>
+					<input 
+						id="txt-tracker-query"
+						type="text" 
+						required
+						class="block w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-yuc-green focus:border-yuc-green text-sm text-slate-800 transition-all uppercase font-mono tracking-wider placeholder-slate-400 focus:outline-none"
+						placeholder="Folio (TRM-...) o Token (TK-...)"
+					/>
+				</div>
+				<button 
+					type="submit" 
+					class="px-6 py-3 bg-yuc-green hover:bg-yuc-green-light text-white font-bold rounded-xl text-sm transition-all shadow-sm shrink-0 cursor-pointer border-none"
+				>
+					Buscar Trámite
+				</button>
+			</form>
+		</div>
+
+		<!-- Tracker Workspace (Container which holds the details) -->
+		<div id="tracker-workspace" class="hidden space-y-8">
+			<!-- Overview Card -->
+			<div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-slate-800">
+				<div class="space-y-2">
+					<span class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest block">DATOS DE LA SOLICITUD</span>
+					<h2 id="lbl-req-name" class="text-xl font-bold text-slate-800 font-display">Constancia de Residencia</h2>
+					<p id="lbl-req-dept" class="text-xs text-slate-500">Dependencia: Catastro y Registro del Estado de Yucatán</p>
+					<p class="text-xs text-slate-600">Solicitado el <span id="lbl-req-date" class="font-semibold text-slate-800">2026-05-18</span> por <span id="lbl-req-citizen" class="font-semibold text-slate-800">Eduardo Chan</span></p>
+					<p class="text-xs text-slate-600">Folio: <span id="lbl-req-folio" class="font-mono font-bold text-slate-850">TRM-2026-00201</span> | Token: <span id="lbl-req-token" class="font-mono font-bold text-yuc-green-dark">TK-128491</span></p>
+				</div>
+				<div class="text-left md:text-right space-y-1.5 shrink-0 self-start md:self-auto">
+					<span class="text-[9px] font-extrabold text-slate-500 block tracking-widest uppercase font-mono">ESTADO ACTUAL</span>
+					<span id="lbl-req-status-badge" class="inline-block px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+						Recibido
+					</span>
+				</div>
+			</div>
+
+			<!-- Visual Progress Timeline (Three mandatory states) -->
+			<div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+				<h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-8 font-display">Línea de Tiempo del Proceso</h3>
+				
+				<!-- Timeline Line container -->
+				<div class="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-8 md:gap-4 pl-6 md:pl-0">
+					
+					<!-- Vertical line for mobile, horizontal for desktop -->
+					<div class="absolute left-2.5 md:left-0 top-0 md:top-5 w-0.5 md:w-full h-full md:h-0.5 bg-slate-200 z-0"></div>
+					<div id="timeline-bar-active" class="absolute left-2.5 md:left-0 top-0 md:top-5 w-0.5 md:w-0 h-0 md:h-0.5 bg-yuc-green z-0 transition-all duration-700"></div>
+
+					<!-- State 1: Recibido -->
+					<div class="relative z-10 flex md:flex-col items-center md:text-center gap-4 md:gap-2 flex-grow">
+						<div id="step-node-1" class="w-6 h-6 rounded-full border-2 border-slate-350 bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs transition-all duration-300">1</div>
+						<div class="space-y-0.5 text-left md:text-center">
+							<h4 class="font-bold text-xs text-slate-800">Recibido</h4>
+							<p class="text-[10px] text-slate-500">Expediente entregado</p>
+						</div>
+					</div>
+
+					<!-- State 2: En revisión con sistemas oficiales -->
+					<div class="relative z-10 flex md:flex-col items-center md:text-center gap-4 md:gap-2 flex-grow">
+						<div id="step-node-2" class="w-6 h-6 rounded-full border-2 border-slate-350 bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs transition-all duration-300">2</div>
+						<div class="space-y-0.5 text-left md:text-center">
+							<h4 class="font-bold text-xs text-slate-800 leading-tight">En revisión con sistemas oficiales</h4>
+							<p class="text-[10px] text-slate-500">Cotejo algorítmico y RENAPO</p>
+						</div>
+					</div>
+
+					<!-- State 3: Aprobado/Declinado -->
+					<div class="relative z-10 flex md:flex-col items-center md:text-center gap-4 md:gap-2 flex-grow">
+						<div id="step-node-3" class="w-6 h-6 rounded-full border-2 border-slate-350 bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs transition-all duration-300">3</div>
+						<div class="space-y-0.5 text-left md:text-center">
+							<h4 id="lbl-resolution-step-title" class="font-bold text-xs text-slate-800">Aprobado / Declinado</h4>
+							<p id="lbl-resolution-step-desc" class="text-[10px] text-slate-500">Dictamen final oficial</p>
+						</div>
+					</div>
+
+				</div>
+			</div>
+
+			<!-- Dependency Comments Panel -->
+			<div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-4">
+				<h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider font-display border-b border-slate-100 pb-3">Observaciones de la Dependencia</h3>
+				<div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-4 text-slate-800">
+					<div class="w-8 h-8 rounded-lg bg-yuc-gold/15 text-yuc-gold-dark flex items-center justify-center shrink-0">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379L12 21l3.62-3.134c1.153-.086 2.294-.213 3.423-.379 1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>
+					</div>
+					<div class="space-y-1">
+						<h5 class="text-xs font-bold text-yuc-green-dark">Comentarios Recientes:</h5>
+						<p id="lbl-dependency-comments" class="text-xs text-slate-600 leading-relaxed italic">
+							Ningún comentario registrado en este folio.
+						</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Correction Needed Warning Box (Specifically highlighted) -->
+			<div id="warning-correction-box" class="hidden bg-orange-50 border border-orange-200 rounded-2xl p-6 space-y-4">
+				<div class="flex gap-4">
+					<div class="w-10 h-10 rounded-lg bg-orange-100 text-orange-800 flex items-center justify-center shrink-0">
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+					</div>
+					<div class="space-y-1">
+						<h4 class="font-bold text-sm text-orange-850">Acción Requerida: Documentación Incompleta</h4>
+						<p class="text-xs text-orange-700 leading-relaxed">
+							Su solicitud ha sido pausada temporalmente debido a la siguiente observación: <strong id="lbl-correction-reason" class="underline">El comprobante de domicilio no coincide con la INE cargada</strong>. Por favor, póngase en contacto o suba la documentación correcta para desbloquear el proceso.
+						</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Approved Certificate Download Box -->
+			<div id="approved-box" class="hidden bg-emerald-50 border border-emerald-250 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+				<div class="flex gap-4">
+					<div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+					</div>
+					<div>
+						<h4 class="font-bold text-sm text-emerald-850">Trámite Aprobado Exitosamente</h4>
+						<p class="text-xs text-emerald-700 leading-relaxed">
+							Se ha emitido y certificado su resolución digital firmada con Firma Electrónica Avanzada por el director de la dependencia.
+						</p>
+					</div>
+				</div>
+				<button id="btn-download-cert" class="px-5 py-2.5 bg-yuc-green hover:bg-yuc-green-light text-white font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer border-none">
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path></svg>
+					<span>Descargar Certificado PDF</span>
+				</button>
+			</div>
+
+			<!-- Status History Bitacora -->
+			<div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+				<div class="p-6 border-b border-slate-100">
+					<h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider font-display">Bitácora Oficial de Cambios de Estado</h3>
+				</div>
+				<div class="overflow-x-auto">
+					<table class="w-full text-left border-collapse text-xs">
+						<thead>
+							<tr class="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200 font-display">
+								<th class="px-6 py-4">Fecha y Hora</th>
+								<th class="px-6 py-4">Autor / Rol</th>
+								<th class="px-6 py-4">Observación / Descripción</th>
+								<th class="px-6 py-4">Estado Anterior → Nuevo</th>
+							</tr>
+						</thead>
+						<tbody id="audit-tbody" class="divide-y divide-slate-100 text-slate-650">
+							<!-- Rendered dynamically from JS -->
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Simulation Button -->
+			<div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+				<div>
+					<p class="font-bold text-slate-750">Simulación del Canal Gubernamental (Demo):</p>
+					<p class="text-slate-500 mt-0.5">Avance el estado de este trámite de forma manual en esta ventana para verificar cómo reacciona la interfaz.</p>
+				</div>
+				<button id="btn-demo-sim" class="px-4 py-2 bg-yuc-gold hover:bg-yuc-gold-light text-slate-950 font-extrabold rounded-lg text-[10px] uppercase tracking-wider transition-all shrink-0 cursor-pointer border border-yuc-gold shadow-sm">
+					Simular Avance
+				</button>
+			</div>
+
+		</div>
+
+		<!-- Error/Empty State for search -->
+		<div id="tracker-error-panel" class="hidden bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-3 shadow-sm">
+			<div class="w-12 h-12 rounded-full bg-red-50 text-red-550 flex items-center justify-center mx-auto border border-red-200">
+				<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+			</div>
+			<h4 class="font-bold text-slate-800 text-base font-display">Clave o Folio de Trámite Inexistente</h4>
+			<p class="text-xs text-slate-500 max-w-sm mx-auto">No se encontró ninguna solicitud con ese folio o token de seguimiento. Revise los caracteres e intente de nuevo.</p>
+		</div>
+
+	</div>
+
+	<script is:inline define:vars={{ API_URL }}>
+		// Setup Search and Track Action
+		const form = document.getElementById('tracker-search-form');
+		const inputQuery = document.getElementById('txt-tracker-query');
+		
+		const errPanel = document.getElementById('tracker-error-panel');
+		const workspace = document.getElementById('tracker-workspace');
+
+		// URL Query check
+		const params = new URLSearchParams(window.location.search);
+		let activeFolio = params.get('folio') || params.get('token') || '';
+
+		if (activeFolio) {
+			inputQuery.value = activeFolio;
+		}
+
+		const executeTrackingSearch = async (queryStr) => {
+			const query = queryStr.trim().toUpperCase();
+			if (!query) return;
+
+			// Intentar buscar en la API primero
+			let req = null;
+			try {
+				const token = localStorage.getItem('jwt_token');
+				const res = await fetch(`${API_URL}/api/tramites/solicitudes/folio/${query}`, {
+					headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+				});
+				if (res.status === 401 || res.status === 403) {
+					localStorage.clear();
+					window.location.href = '/ciudadano/login';
+					return;
+				}
+				const json = await res.json();
+				if (json.success && json.data) {
+					const s = json.data;
+					window.currentTrackerReqId = s.id;
+					window.currentAuditLog = s.audit_log || [];
+					req = {
+						folio: s.folio || s.id,
+						name: s.tramite?.nombre || s.campos_respuesta?.tramite_nombre_fallback || 'Trámite',
+						dept: s.dependencia?.nombre || s.campos_respuesta?.dependencia_nombre_fallback || '-',
+						date: (s.created_at || '').split('T')[0],
+						status: s.estado || 'recibido',
+						citizen_fullname: s.ciudadano?.nombre_completo || s.campos_respuesta?.nombre_ciudadano || 'N/A',
+						token: s.campos_respuesta?.token_expediente || s.token || '-',
+						comments: s.notas || ''
+					};
+				}
+			} catch (_) {}
+
+			// Fallback a localStorage si no está en DB
+			if (!req) {
+				const localRequests = JSON.parse(localStorage.getItem('civicflow_requests') || '[]');
+				req = localRequests.find(r => r.folio === query || r.token === query);
+				if (req) window.currentAuditLog = [];
+			}
+
+			if (!req) {
+				workspace.classList.add('hidden');
+				errPanel.classList.remove('hidden');
+				return;
+			}
+
+			// Render request information
+			errPanel.classList.add('hidden');
+			workspace.classList.remove('hidden');
+			activeFolio = req.folio; // anchor current active folio
+
+			document.getElementById('lbl-req-name').textContent = req.name;
+			document.getElementById('lbl-req-dept').textContent = `Dependencia: ${req.dept}`;
+			document.getElementById('lbl-req-date').textContent = req.date;
+			document.getElementById('lbl-req-citizen').textContent = req.citizen_fullname || 'N/A';
+			document.getElementById('lbl-req-folio').textContent = req.folio;
+			document.getElementById('lbl-req-token').textContent = req.token;
+			document.getElementById('lbl-dependency-comments').textContent = req.comments || 'Ningún comentario u observación extra por el revisor.';
+
+			// Status badge
+			const badge = document.getElementById('lbl-req-status-badge');
+			let badgeClass = 'bg-slate-100 text-slate-700';
+			let displayStatus = req.status;
+			if (req.status === 'documentacion_incompleta') { badgeClass = 'bg-orange-50 text-orange-800 border border-orange-200'; displayStatus = 'Documentación Incompleta'; }
+			else if (req.status === 'en_revision') { badgeClass = 'bg-purple-50 text-purple-800 border border-purple-200'; displayStatus = 'En Revisión Oficial'; }
+			else if (req.status === 'aprobado') { badgeClass = 'bg-emerald-50 text-emerald-800 border border-emerald-200'; displayStatus = 'Aprobado'; }
+			else if (req.status === 'rechazado' || req.status === 'declinado') { badgeClass = 'bg-red-50 text-red-800 border border-red-200'; displayStatus = 'Declinado'; }
+			else if (req.status === 'recibido') { badgeClass = 'bg-yuc-green/10 text-yuc-green border border-yuc-green/20'; displayStatus = 'Recibido'; }
+			badge.textContent = displayStatus;
+			badge.className = `inline-block px-3.5 py-1.5 rounded-full text-xs font-bold ${badgeClass}`;
+
+			// Timeline Nodes
+			const node1 = document.getElementById('step-node-1');
+			const node2 = document.getElementById('step-node-2');
+			const node3 = document.getElementById('step-node-3');
+			const lineBar = document.getElementById('timeline-bar-active');
+
+			// Reset nodes style
+			node1.className = "w-6 h-6 rounded-full border-2 border-slate-300 bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs transition-all";
+			node2.className = "w-6 h-6 rounded-full border-2 border-slate-300 bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs transition-all";
+			node3.className = "w-6 h-6 rounded-full border-2 border-slate-300 bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs transition-all";
+			
+			document.getElementById('lbl-resolution-step-title').textContent = "Aprobado / Declinado";
+			document.getElementById('lbl-resolution-step-title').className = "font-bold text-xs text-slate-800";
+			document.getElementById('lbl-resolution-step-desc').textContent = "Dictamen final oficial";
+			document.getElementById('lbl-resolution-step-desc').className = "text-[10px] text-slate-500";
+			document.getElementById('warning-correction-box').classList.add('hidden');
+			document.getElementById('approved-box').classList.add('hidden');
+
+			// Check status transitions
+			if (req.status === 'recibido') {
+				node1.className = "w-6 h-6 rounded-full border-2 border-yuc-green bg-yuc-green text-white flex items-center justify-center font-bold text-xs shadow-sm";
+				lineBar.style.width = "0%";
+				lineBar.style.height = "0%";
+			} else if (req.status === 'en_revision') {
+				node1.className = "w-6 h-6 rounded-full border-2 border-yuc-green bg-yuc-green text-white flex items-center justify-center font-bold text-xs";
+				node2.className = "w-6 h-6 rounded-full border-2 border-yuc-green bg-white text-yuc-green flex items-center justify-center font-bold text-xs shadow-sm ring-4 ring-yuc-green/10";
+				lineBar.style.width = "50%";
+				lineBar.style.height = "50%";
+			} else if (req.status === 'documentacion_incompleta') {
+				node1.className = "w-6 h-6 rounded-full border-2 border-yuc-green bg-yuc-green text-white flex items-center justify-center font-bold text-xs";
+				node2.className = "w-6 h-6 rounded-full border-2 border-orange-500 bg-orange-500 text-white flex items-center justify-center font-bold text-xs shadow-sm";
+				lineBar.style.width = "50%";
+				lineBar.style.height = "50%";
+				document.getElementById('warning-correction-box').classList.remove('hidden');
+				document.getElementById('lbl-correction-reason').textContent = req.comments || 'Se requieren correcciones en sus documentos.';
+			} else if (req.status === 'aprobado') {
+				node1.className = "w-6 h-6 rounded-full border-2 border-yuc-green bg-yuc-green text-white flex items-center justify-center font-bold text-xs";
+				node2.className = "w-6 h-6 rounded-full border-2 border-yuc-green bg-yuc-green text-white flex items-center justify-center font-bold text-xs";
+				node3.className = "w-6 h-6 rounded-full border-2 border-emerald-500 bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-sm";
+				
+				document.getElementById('lbl-resolution-step-title').textContent = "Aprobado";
+				document.getElementById('lbl-resolution-step-title').className = "font-bold text-xs text-emerald-800";
+				document.getElementById('lbl-resolution-step-desc').textContent = "Dictamen emitido";
+				document.getElementById('lbl-resolution-step-desc').className = "text-[10px] text-emerald-600";
+				
+				lineBar.style.width = "100%";
+				lineBar.style.height = "100%";
+				document.getElementById('approved-box').classList.remove('hidden');
+			} else if (req.status === 'rechazado' || req.status === 'declinado') {
+				node1.className = "w-6 h-6 rounded-full border-2 border-yuc-green bg-yuc-green text-white flex items-center justify-center font-bold text-xs";
+				node2.className = "w-6 h-6 rounded-full border-2 border-yuc-green bg-yuc-green text-white flex items-center justify-center font-bold text-xs";
+				node3.className = "w-6 h-6 rounded-full border-2 border-red-500 bg-red-500 text-white flex items-center justify-center font-bold text-xs shadow-md";
+				
+				document.getElementById('lbl-resolution-step-title').textContent = "Declinado";
+				document.getElementById('lbl-resolution-step-title').className = "font-bold text-xs text-red-700";
+				document.getElementById('lbl-resolution-step-desc').textContent = "Solicitud rechazada";
+				document.getElementById('lbl-resolution-step-desc').className = "text-[10px] text-red-600";
+				
+				lineBar.style.width = "100%";
+				lineBar.style.height = "100%";
+			}
+
+			// Render Audit log from API response
+			const folioLogs = window.currentAuditLog || [];
+			const tbody = document.getElementById('audit-tbody');
+			tbody.innerHTML = '';
+
+			const estadoLabel = {
+				'recibido': 'Recibido',
+				'en_revision': 'En revisión',
+				'documentacion_incompleta': 'Doc. incompleta',
+				'aprobado': 'Aprobado',
+				'rechazado': 'Rechazado'
+			};
+
+			if (folioLogs.length === 0) {
+				const tr = document.createElement('tr');
+				tr.innerHTML = `<td colspan="4" class="px-6 py-4 text-center text-slate-400">Ningún cambio de estado registrado aún.</td>`;
+				tbody.appendChild(tr);
+			} else {
+				folioLogs.forEach(log => {
+					const tr = document.createElement('tr');
+					tr.className = "hover:bg-slate-50/50 border-b border-slate-100 transition-colors";
+
+					const ant = estadoLabel[log.estado_anterior] || log.estado_anterior || '-';
+					const nvo = estadoLabel[log.estado_nuevo] || log.estado_nuevo || '-';
+					let nuevoColor = 'text-yuc-green-dark';
+					if (log.estado_nuevo === 'documentacion_incompleta') nuevoColor = 'text-orange-600';
+					else if (log.estado_nuevo === 'aprobado') nuevoColor = 'text-emerald-600';
+					else if (log.estado_nuevo === 'rechazado') nuevoColor = 'text-red-600';
+
+					const transStr = `<span class="font-bold">${ant}</span> → <span class="font-bold ${nuevoColor}">${nvo}</span>`;
+					const fecha = log.created_at ? new Date(log.created_at).toLocaleString('es-MX') : '-';
+					const autor = log.usuario_id || 'Sistema';
+
+					tr.innerHTML = `
+						<td class="px-6 py-4 font-mono">${fecha}</td>
+						<td class="px-6 py-4 font-semibold">${autor}</td>
+						<td class="px-6 py-4 font-medium text-slate-700">${log.notas || 'Actualización de expediente.'}</td>
+						<td class="px-6 py-4">${transStr}</td>
+					`;
+					tbody.appendChild(tr);
+				});
+			}
+		};
+
+		// Submit Search Handler
+		form.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			const q = inputQuery.value.trim().toUpperCase();
+			if(q) {
+				const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?folio=' + q;
+				window.history.pushState({path:newurl}, '', newurl);
+				await executeTrackingSearch(q);
+			}
+		});
+
+		// Trigger check if folio is passed on load
+		if (activeFolio) {
+			executeTrackingSearch(activeFolio);
+		}
+
+		// Sync with localStorage on other tabs changes (real-time simulation)
+		window.addEventListener('storage', (e) => {
+			if (e.key === 'civicflow_requests' || e.key === 'civicflow_audit_logs') {
+				if (activeFolio) {
+					executeTrackingSearch(activeFolio);
+					window.showToast("El estado de su trámite ha sido actualizado por la dependencia", "info");
+				}
+			}
+		});
+
+		// Demo Advance Simulation button click handler
+		document.getElementById('btn-demo-sim').addEventListener('click', async () => {
+			if (!activeFolio || !window.currentTrackerReqId) return;
+			const btn = document.getElementById('btn-demo-sim');
+			btn.disabled = true;
+			btn.textContent = 'Simulando Proceso Automático...';
+			btn.classList.add('opacity-70', 'cursor-not-allowed');
+			
+			try {
+				// Paso 1: En Revisión
+				let res = await fetch(`${API_URL}/api/gestores/solicitudes/${window.currentTrackerReqId}/estado`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						estado_nuevo: 'en_revision',
+						notas: 'El sistema In óolal Yucatan inició la verificación de identidad del ciudadano mediante cruce de datos.',
+						usuario_id: 'sistema_automatico@yucatan.gob.mx',
+						ip: '127.0.0.1'
+					})
+				});
+				if(res.ok) {
+					window.showToast("Actualizando: En revisión oficial", "info");
+					await executeTrackingSearch(activeFolio);
+				}
+				
+				// Esperar 2.5 segundos para ver la barra en medio
+				await new Promise(resolve => setTimeout(resolve, 2500));
+
+				// Paso 2: Aprobado
+				res = await fetch(`${API_URL}/api/gestores/solicitudes/${window.currentTrackerReqId}/estado`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						estado_nuevo: 'aprobado',
+						notas: 'Cruce de bases catastrales e INE validado. Aprobación emitida con Firma Electrónica Avanzada (FEA) por el Director.',
+						usuario_id: 'director_catastro@yucatan.gob.mx',
+						ip: '127.0.0.1',
+						firma_base64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+					})
+				});
+				
+				if(res.ok) {
+					window.showToast("Simulación completada: Trámite Aprobado", "success");
+					await executeTrackingSearch(activeFolio);
+				}
+			} catch (e) {
+				console.error(e);
+				window.showToast("Error de conexión al simular", "error");
+			} finally {
+				btn.disabled = false;
+				btn.textContent = 'Simular Avance';
+				btn.classList.remove('opacity-70', 'cursor-not-allowed');
+			}
+		});
+
+		// Cert download PDF mock
+		document.getElementById('btn-download-cert').addEventListener('click', () => {
+			let csvContent = "data:text/plain;charset=utf-8,";
+			csvContent += `=========================================================================\n`;
+			csvContent += `         GOBIERNO DEL ESTADO DE YUCATÁN - DIRECCIÓN DE TRÁMITES\n`;
+			csvContent += `                  RESOLUCIÓN OFICIAL DE TRÁMITE DIGITAL\n`;
+			csvContent += `=========================================================================\n\n`;
+			csvContent += `Folio de Referencia:  ${activeFolio}\n`;
+			csvContent += `Fecha de Certificado: ${new Date().toLocaleString()}\n`;
+			csvContent += `Dictamen:             APROBADO Y FIRMADO ELECTRÓNICAMENTE\n`;
+			csvContent += `Validador:            Director General del Departamento\n\n`;
+			csvContent += `FIRMA ELECTRÓNICA AVANZADA (FEA) CERTIFICADA:\n`;
+			csvContent += `--------------------------------------------\n`;
+			csvContent += `Firma: CF-SHA256-${activeFolio}-YUC-GOLDEN-STATE-KEY-2026\n`;
+			csvContent += `Este certificado digital tiene plena validez jurídica e institucional.\n`;
+			csvContent += `=========================================================================\n`;
+			
+			const encodedUri = encodeURI(csvContent);
+			const link = document.createElement("a");
+			link.setAttribute("href", encodedUri);
+			link.setAttribute("download", `certificado_firmado_${activeFolio}.txt`);
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.showToast("Certificado oficial descargado", "success");
+		});
+	</script>
+
+</Layout>
