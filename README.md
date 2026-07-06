@@ -32,7 +32,7 @@ This system was engineered to eliminate bureaucratic bottlenecks through a dual-
 
 ---
 
-## 📸 Platform Preview
+## Platform Preview
 
 <div align="center">
   <img src="./capturas/Inicio.png" width="600" alt="CivicFlow Welcome Screen">
@@ -56,7 +56,7 @@ This system was engineered to eliminate bureaucratic bottlenecks through a dual-
 <br>
 
 <div align="center">
-  <img src="./capturas/Generacion-de-tokens.png" width="600" alt="Token Generation Interface">
+  <img src="./capturas/Generación-de-tokens.png" width="600" alt="Token Generation Interface">
   <p><em>Automated system verification that issues a secure access token once all required identity documents are uploaded.</em></p>
 </div>
 
