@@ -15,7 +15,12 @@ This system was engineered to eliminate bureaucratic bottlenecks through a dual-
 
 ---
 
-## Tech Stack & Architecture
+##  Tech Stack & Architecture
+
+![Astro](https://img.shields.io/badge/Astro-0C1015?style=for-the-badge&logo=astro&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 
 * **Frontend:** Built with **Astro**, leveraging native **HTML5, CSS3, and JavaScript** to guarantee near-instantaneous load times and a highly optimized rendering process, crucial for accessible public platforms.
 * **Backend & Database:** Integrated with **Supabase** (PostgreSQL) and structured using **SQL** for robust data querying, secure real-time storage, and identity management.
